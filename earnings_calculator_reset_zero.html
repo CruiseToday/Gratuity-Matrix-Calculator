@@ -1,0 +1,148 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Earnings Calculator Enhanced</title>
+    
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        label, input, button { display: block; margin: 10px 0; }
+        input[type="number"] { width: 200px; padding: 5px; }
+        button { padding: 10px 20px; margin-right: 10px; }
+        #result, #summary { margin-top: 20px; font-weight: bold; }
+        table { margin-top: 20px; border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        canvas { margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <h1>Earnings Calculator</h1>
+
+    <label for="base">Gratuities/Tips/Discretionary ($)</label>
+    <input type="number" id="base" min="0" value="1000">
+
+    <label for="occupancy">Occupancy Rate (%) (Weight: 50%) - Tiers: ≥95% = 1.2, ≥85% = 1.0, ≥75% = 0.8, <75% = 0.6</label>
+    <input type="number" id="occupancy" min="0" max="100" value="90">
+
+    <label for="revenue">Revenue Target (%) (Weight: 35%) - Tiers: ≥95% = 1.2, ≥85% = 1.0, ≥75% = 0.8, <75% = 0.6</label>
+    <input type="number" id="revenue" min="0" max="100" value="90">
+
+    <label for="sailings">Number of Sailings (Weight: 15%) - Tiers: ≥6 = 1.2, 5 = 1.0, 3 = 0.8, <3 = 0.6</label>
+    <input type="number" id="sailings" min="0" value="8">
+
+    <button onclick="calculateEarnings()">Calculate Earnings</button>
+    <button onclick="resetForm()">Reset</button>
+    <button onclick="exportCSV()">Export Data</button>
+
+    <div id="result"></div>
+    <div id="summary"></div>
+    
+
+    <script>
+        function getOccupancyMultiplier(rate) {
+            if (rate >= 95) return 1.2;
+            else if (rate >= 85) return 1.0;
+            else if (rate >= 75) return 0.8;
+            else return 0.6;
+        }
+
+        function getRevenueMultiplier(rev) {
+            if (rev >= 95) return 1.2;
+            else if (rev >= 85) return 1.0;
+            else if (rev >= 75) return 0.8;
+            else return 0.6;
+        }
+
+        function getSailingsMultiplier(s) {
+            if (s >= 6) return 1.2;
+            else if (s == 5) return 1.0;
+            else if (s == 3) return 0.8;
+            else return 0.6;
+        }
+
+        function calculateEarnings() {
+            const base = parseFloat(document.getElementById("base").value);
+            const occ = parseFloat(document.getElementById("occupancy").value);
+            const rev = parseFloat(document.getElementById("revenue").value);
+            const sail = parseFloat(document.getElementById("sailings").value);
+
+            const occMult = getOccupancyMultiplier(occ);
+            const revMult = getRevenueMultiplier(rev);
+            const sailMult = getSailingsMultiplier(sail);
+
+            const multiplier = occMult * 0.50 + revMult * 0.35 + sailMult * 0.15;
+            const adjusted = Math.min(base, base * multiplier);
+
+            document.getElementById("result").innerText = `Adjusted Earnings: $${adjusted.toFixed(2)}`;
+
+            document.getElementById("summary").innerHTML = `
+                <table>
+                    <tr><th>Metric</th><th>Value</th><th>Multiplier</th><th>Weight</th></tr>
+                    <tr><td>Occupancy Rate</td><td>${occ}%</td><td>${occMult}</td><td>50%</td></tr>
+                    <tr><td>Revenue Target</td><td>$${rev}</td><td>${revMult}</td><td>35%</td></tr>
+                    <tr><td>Sailings</td><td>${sail}</td><td>${sailMult}</td><td>15%</td></tr>
+                    <tr><td>Gratuities</td><td colspan="3">$${base}</td></tr>
+                    <tr><td>Adjusted Earnings</td><td colspan="3">$${adjusted.toFixed(2)}</td></tr>
+                </table>
+            `;
+
+            const ctx = document.getElementById('chart').getContext('2d');
+            if (window.myChart) window.myChart.destroy();
+            window.myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Occupancy', 'Revenue', 'Sailings'],
+                    datasets: [{
+                        label: 'Weighted Contribution',
+                        data: [occMult * 0.50, revMult * 0.35, sailMult * 0.15],
+                        backgroundColor: ['#4caf50', '#2196f3', '#ff9800']
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: { beginAtZero: true, max: 1.2 }
+                    }
+                }
+            });
+        }
+
+        function resetForm() {
+            document.getElementById("base").value = 0;
+            document.getElementById("occupancy").value = 0;
+            document.getElementById("revenue").value = 0;
+            document.getElementById("sailings").value = 0;
+            document.getElementById("result").innerText = "";
+            document.getElementById("summary").innerHTML = "";
+            if (window.myChart) window.myChart.destroy();
+        }
+
+        function exportCSV() {
+            const base = document.getElementById("base").value;
+            const occ = document.getElementById("occupancy").value;
+            const rev = document.getElementById("revenue").value;
+            const sail = document.getElementById("sailings").value;
+
+            const occMult = getOccupancyMultiplier(parseFloat(occ));
+            const revMult = getRevenueMultiplier(parseFloat(rev));
+            const sailMult = getSailingsMultiplier(parseFloat(sail));
+            const multiplier = occMult * 0.50 + revMult * 0.35 + sailMult * 0.15;
+            const adjusted = Math.min(parseFloat(base), parseFloat(base) * multiplier);
+
+            const csv = `Metric,Value,Multiplier,Weight
+Occupancy Rate,${occ},${occMult},50%
+Revenue,${rev},${revMult},35%
+Sailings,${sail},${sailMult},15%
+Gratuities,${base},,,
+Adjusted Earnings,${adjusted.toFixed(2)},,,`;
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'earnings_summary.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
